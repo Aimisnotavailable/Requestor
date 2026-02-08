@@ -3,48 +3,54 @@ import time
 import argparse
 from datetime import datetime
 
-def send_ping(url):
+def perform_request(url, method):
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Standard headers to mimic a real browser
+    headers = {
+        "User-Agent": "Python-HTTP-Pinger/1.0",
+        "Accept": "*/*"
+    }
+
     try:
-        response = requests.get(url, timeout=10)
-        print(f"[{now}] Request sent to {url} | Status: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"[{now}] Failed to reach server. Error: {e}")
+        # Standardizing the method name (GET, POST, etc.)
+        method = method.upper()
+        
+        # dynamic execution of the requests method
+        response = requests.request(method, url, headers=headers, timeout=15)
+        
+        print(f"[{now}] {method} -> {url} | Status: {response.status_code} ({response.reason})")
+        
+        # If the server returns a client or server error (4xx or 5xx)
+        if not response.ok:
+            print(f"      Warning: Server returned an error.")
+
+    except requests.exceptions.ConnectionError:
+        print(f"[{now}] Error: Could not connect to the server. Is the URL correct?")
+    except requests.exceptions.Timeout:
+        print(f"[{now}] Error: The request timed out.")
+    except Exception as e:
+        print(f"[{now}] Unexpected Error: {e}")
 
 def main():
-    # Set up argument parsing
-    parser = argparse.ArgumentParser(description="Periodically ping a server URL.")
+    parser = argparse.ArgumentParser(description="Customizable HTTP Request Scheduler")
     
-    # Adding the --url argument
-    parser.add_argument(
-        "--url", 
-        type=str, 
-        required=True, 
-        help="The full URL to request (e.g., https://google.com)"
-    )
-    
-    # Adding an optional --interval argument (defaulted to 120 seconds)
-    parser.add_argument(
-        "--interval", 
-        type=int, 
-        default=120, 
-        help="Time between requests in seconds (default: 120)"
-    )
+    parser.add_argument("--url", type=str, required=True, help="The target URL (e.g., http://example.com)")
+    parser.add_argument("--interval", type=int, default=120, help="Interval in seconds (default: 120)")
+    parser.add_argument("--method", type=str, default="GET", choices=["GET", "POST", "PUT", "DELETE", "HEAD"], 
+                        help="HTTP method to use (default: GET)")
 
     args = parser.parse_args()
 
-    print(f"--- Starting Pinger ---")
-    print(f"Target: {args.url}")
-    print(f"Interval: {args.interval} seconds")
-    print("Press Ctrl+C to stop.")
-    print("-----------------------")
+    print(f"Ping initialized: {args.method} {args.url} every {args.interval}s")
+    print("Press Ctrl+C to exit safely.\n")
 
     try:
         while True:
-            send_ping(args.url)
+            perform_request(args.url, args.method)
             time.sleep(args.interval)
     except KeyboardInterrupt:
-        print("\nScript stopped. Have a productive day!")
+        print("\nScheduler stopped. Goodbye!")
 
 if __name__ == "__main__":
     main()
